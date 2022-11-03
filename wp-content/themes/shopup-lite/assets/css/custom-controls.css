@@ -1,0 +1,6 @@
+li#customize-control-shopup_cta_center_image,
+li#accordion-section-shopup_two_col_promo_section,
+li#accordion-section-shopup_associate_section,
+li#accordion-section-shopup_features_section {
+	display: none !important;
+}
