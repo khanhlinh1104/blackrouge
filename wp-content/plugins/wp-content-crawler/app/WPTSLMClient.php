@@ -616,11 +616,54 @@ class WPTSLMClient {
     }
 
     private function handleAPIResponseForInfo(&$response) {
-        $legit = true;
-$this->resetTrialCount();
-$this->setValid('1');
-$this->setErrorMessage(null);
-return true;
+        $code = $this->getResponseCode($response);
+        $body = $this->getResponseBody($response);
+
+        if ($code === null || ($code >= 200 && $code < 300)) {
+            if ($body === null || !$body || $code === null || !$code) {
+                $this->initExpirationDoNotOverride();
+                $this->resetTrialCount();
+                $this->setErrorMessage();
+                return false;
+            }
+
+            $legit = (isset($body->valid) && $body->valid) || !isset($body->error);
+            if ($legit) {
+                $this->resetTrialCount();
+                $this->setValid('1');
+                $this->setErrorMessage(null);
+                return true;
+            }
+
+            $valid = $this->getValid();
+            if ($valid === '1') $this->initExpiration();
+
+            if(isset($body->expiration)) {
+                $this->initExpiration($body->expiration, true);
+            }
+
+            $trialCount = $this->getTrialCount() - 1;
+            $this->updateTrialCount($trialCount);
+            if ($trialCount < 1) {
+                $this->setValid('0');
+                $this->setErrorMessage();
+            }
+
+        } else if ($code >= 500 && $code < 600) {
+            $this->initExpiration();
+            $this->resetTrialCount();
+
+        } else if ($code === 403) {
+            $this->updateTrialCount(0);
+            $this->setValid('0');
+
+        } else {
+            $this->setValid('0');
+            $this->updateTrialCount(0);
+        }
+
+        $this->setErrorMessage($body && isset($body->error) ? $body->error : false);
+        return false;
     }
 
     /**
